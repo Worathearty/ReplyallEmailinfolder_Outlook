@@ -1,6 +1,6 @@
 Attribute VB_Name = "Module1"
 Sub ReplyAllAndAddText()
-    
+
     Dim olApp As Outlook.Application
     Dim olNs As Outlook.NameSpace
     Dim olFolder As Outlook.MAPIFolder
@@ -16,6 +16,9 @@ Sub ReplyAllAndAddText()
     Dim strNewBodyText As String
     Dim intResponse As Integer
     Dim blnShowDetails As Boolean
+    Dim dictRepliedEmails As Object
+    
+    Set dictRepliedEmails = CreateObject("Scripting.Dictionary")
     
     'Get the body text and subject from user input
     strSubject = InputBox("Enter the subject for the reply emails")
@@ -35,36 +38,33 @@ Sub ReplyAllAndAddText()
             'Loop through each email in the folder
             For Each objMail In olFolder.Items
                 If TypeOf objMail Is MailItem Then
-                    'Reply to the email
+                    'Check if the email has already been replied to
                     Set olMail = objMail
-                    Set olReply = olMail.ReplyAll
-                    
-                    'Preserve the "RE:" prefix in the subject line
-                    If InStr(1, olMail.Subject, "RE:", vbTextCompare) = 1 Then
-                        olReply.Subject = olMail.Subject
-                    Else
-                        olReply.Subject = "RE: " & olMail.Subject
-                    End If
-                    
-                    'Add the specified body text to the existing body
-                    strNewBodyText = vbCrLf & strBodyText & vbCrLf & olMail.Body
-                    olReply.Body = strNewBodyText
-                    
-                    
-                    If intResponse = vbYes Then
+                    If Not dictRepliedEmails.exists(olMail.EntryID) Then
+                        'Reply to the email
+                        Set olReply = olMail.ReplyAll
+                        
+                        'Preserve the "RE:" prefix in the subject line
+                        If InStr(1, olMail.Subject, "RE:", vbTextCompare) = 1 Then
+                            olReply.Subject = olMail.Subject
+                        Else
+                            olReply.Subject = "RE: " & olMail.Subject
+                        End If
+                        
+                        'Add the specified body text to the existing body
+                        strNewBodyText = vbCrLf & strBodyText & vbCrLf & olMail.Body
+                        olReply.Body = strNewBodyText
+                        
                         'Send the reply
                         If blnShowDetails Then
                             olReply.Display
                         Else
                             olReply.Send
                         End If
-                    ElseIf intResponse = vbCancel Then
-                        Exit Sub
+                        
+                        'Add the email to the dictionary of replied emails
+                        dictRepliedEmails.Add olMail.EntryID, True
                     End If
-                    
-                    'Clear the objects
-                    Set olMail = Nothing
-                    Set olReply = Nothing
                 End If
             Next objMail
         End If
@@ -74,9 +74,10 @@ Sub ReplyAllAndAddText()
     Set olFolder = Nothing
     Set olNs = Nothing
     Set olApp = Nothing
-    
+
 End Sub
 
+ 
 
 
 
